@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Header from './components/Header'
 import BottomNav from './components/BottomNav'
+import Sidebar from './components/Sidebar'
 import { ToastContainer, useToast } from './hooks/useToast'
 
 import Inicio from './pages/Inicio'
@@ -30,9 +31,22 @@ export default function App() {
   return (
     <>
       <ToastContainer toasts={toasts} />
-      <Header />
-      {pages[page] || pages.inicio}
-      <BottomNav current={page} onChange={setPage} />
+      {/* Mobile layout */}
+      <div className="mobile-shell">
+        <Header />
+        {pages[page] || pages.inicio}
+        <BottomNav current={page} onChange={setPage} />
+      </div>
+      {/* Desktop layout */}
+      <div className="desktop-shell">
+        <Sidebar current={page} onChange={setPage} />
+        <div className="desktop-main">
+          <Header desktop />
+          <div className="desktop-content">
+            {pages[page] || pages.inicio}
+          </div>
+        </div>
+      </div>
     </>
   )
 }

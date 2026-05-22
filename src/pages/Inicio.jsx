@@ -137,58 +137,64 @@ export default function Inicio({ onNavigate }) {
         </div>
       )}
 
-      {/* Acciones */}
-      <div className="section">
-        <div className="section-title">Acciones</div>
-        {ACTIONS.map(a => (
-          <button key={a.page} className={`action-btn ${a.cls}`} onClick={() => onNavigate(a.page)}>
-            <span style={{ fontSize: '1.3rem' }}>{a.icon}</span>
-            {a.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Top ventas */}
-      {topSales.length > 0 && (
+      {/* Desktop: acciones + rankings en dos columnas */}
+      <div className="inicio-grid">
+        {/* Acciones */}
         <div className="section">
-          <div className="section-title">🏆 Productos más vendidos</div>
-          {topSales.map((p, i) => (
-            <div key={p.name} className="rank-item">
-              <div className={`rank-num ${rankColors[i] || ''}`}>{i + 1}</div>
-              <div className="rank-info">
-                <div className="rank-name">{p.name}</div>
-                <div className="rank-sub">{p.qty} unidades vendidas</div>
-              </div>
-              <div className="rank-val">{p.qty} ud.</div>
-            </div>
+          <div className="section-title">Acciones</div>
+          {ACTIONS.map(a => (
+            <button key={a.page} className={`action-btn ${a.cls}`} onClick={() => onNavigate(a.page)}>
+              <span style={{ fontSize: '1.3rem' }}>{a.icon}</span>
+              {a.label}
+            </button>
           ))}
         </div>
-      )}
 
-      {/* Top margen */}
-      {topMargin.length > 0 && (
-        <div className="section">
-          <div className="section-title">📈 Mejor margen de ganancia</div>
-          <div style={{ fontSize: '.78rem', color: 'var(--gray-400)', marginBottom: 10 }}>Solo productos con costo registrado</div>
-          {topMargin.map((p, i) => (
-            <div key={p.name} className="rank-item">
-              <div className={`rank-num ${rankColors[i] || ''}`}>{i + 1}</div>
-              <div className="rank-info">
-                <div className="rank-name">{p.name}</div>
-                <div className="rank-sub">Margen sobre costo</div>
-              </div>
-              <div className="rank-val" style={{ color: p.margin >= 0 ? 'var(--green-dark)' : 'var(--red)' }}>
-                {p.margin >= 0 ? '+' : ''}{p.margin}%
-              </div>
+        {/* Rankings col */}
+        <div className="inicio-rankings">
+          {/* Top ventas */}
+          {topSales.length > 0 && (
+            <div className="section">
+              <div className="section-title">🏆 Productos más vendidos</div>
+              {topSales.map((p, i) => (
+                <div key={p.name} className="rank-item">
+                  <div className={`rank-num ${rankColors[i] || ''}`}>{i + 1}</div>
+                  <div className="rank-info">
+                    <div className="rank-name">{p.name}</div>
+                    <div className="rank-sub">{p.qty} unidades vendidas</div>
+                  </div>
+                  <div className="rank-val">{p.qty} ud.</div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {/* Avisos */}
-      <div className="section">
-        <div className="section-title">Avisos</div>
-        <div className="notice green">✅ Todo en orden. ¡Buen día de trabajo!</div>
+          {/* Top margen */}
+          {topMargin.length > 0 && (
+            <div className="section">
+              <div className="section-title">📈 Mejor margen de ganancia</div>
+              <div style={{ fontSize: '.78rem', color: 'var(--gray-400)', marginBottom: 10 }}>Solo productos con costo registrado</div>
+              {topMargin.map((p, i) => (
+                <div key={p.name} className="rank-item">
+                  <div className={`rank-num ${rankColors[i] || ''}`}>{i + 1}</div>
+                  <div className="rank-info">
+                    <div className="rank-name">{p.name}</div>
+                    <div className="rank-sub">Margen sobre costo</div>
+                  </div>
+                  <div className="rank-val" style={{ color: p.margin >= 0 ? 'var(--green-dark)' : 'var(--red)' }}>
+                    {p.margin >= 0 ? '+' : ''}{p.margin}%
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Avisos */}
+          <div className="section">
+            <div className="section-title">Avisos</div>
+            <div className="notice green">✅ Todo en orden. ¡Buen día de trabajo!</div>
+          </div>
+        </div>
       </div>
     </div>
   )
