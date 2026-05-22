@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Header from './components/Header'
 import BottomNav from './components/BottomNav'
-import Sidebar from './components/Sidebar'
+import Sidebar, { PAGE_TITLES } from './components/Sidebar'
 import { ToastContainer, useToast } from './hooks/useToast'
 
 import Inicio from './pages/Inicio'
@@ -18,32 +18,36 @@ export default function App() {
   const { toasts, addToast } = useToast()
 
   const pages = {
-    inicio: <Inicio onNavigate={setPage} />,
-    caja: <Caja addToast={addToast} />,
-    precios: <Precios addToast={addToast} onNavigate={setPage} />,
+    inicio:     <Inicio onNavigate={setPage} />,
+    caja:       <Caja addToast={addToast} />,
+    precios:    <Precios addToast={addToast} onNavigate={setPage} />,
     inventario: <Inventario addToast={addToast} />,
-    registro: <Registro />,
-    compras: <Compras addToast={addToast} />,
-    gastos: <Gastos addToast={addToast} />,
-    cargar: <Cargar addToast={addToast} />,
+    registro:   <Registro />,
+    compras:    <Compras addToast={addToast} />,
+    gastos:     <Gastos addToast={addToast} />,
+    cargar:     <Cargar addToast={addToast} />,
   }
+
+  const content = pages[page] || pages.inicio
 
   return (
     <>
       <ToastContainer toasts={toasts} />
-      {/* Mobile layout */}
+
+      {/* ── Mobile ── */}
       <div className="mobile-shell">
         <Header />
-        {pages[page] || pages.inicio}
+        {content}
         <BottomNav current={page} onChange={setPage} />
       </div>
-      {/* Desktop layout */}
+
+      {/* ── Desktop ── */}
       <div className="desktop-shell">
         <Sidebar current={page} onChange={setPage} />
         <div className="desktop-main">
-          <Header desktop />
+          <Header desktop pageTitle={PAGE_TITLES[page]} />
           <div className="desktop-content">
-            {pages[page] || pages.inicio}
+            {content}
           </div>
         </div>
       </div>

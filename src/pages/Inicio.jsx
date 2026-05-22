@@ -5,7 +5,7 @@ import { format, startOfMonth, endOfMonth } from 'date-fns'
 const fmt = n => '$' + Math.round(n).toLocaleString('es-CL')
 
 export default function Inicio({ onNavigate }) {
-  const [stats, setStats] = useState({ ventasHoy: 0, clientes: 0, gastosMes: 0, gananciaNeta: 0, gainPerPeso: null })
+  const [stats, setStats] = useState({ ventasHoy:0, clientes:0, gastosMes:0, gananciaNeta:0, gainPerPeso:null })
   const [topSales, setTopSales] = useState([])
   const [topMargin, setTopMargin] = useState([])
   const [loading, setLoading] = useState(true)
@@ -16,78 +16,49 @@ export default function Inicio({ onNavigate }) {
     setLoading(true)
     const today = format(new Date(), 'yyyy-MM-dd')
     const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd')
-    const monthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd')
+    const monthEnd   = format(endOfMonth(new Date()),   'yyyy-MM-dd')
 
-    // Ventas hoy (non-historical)
-    const { data: salesToday } = await supabase
-      .from('sales').select('total, id').eq('sale_date', today).eq('is_historical', false)
-    const ventasHoy = salesToday?.reduce((s, x) => s + x.total, 0) || 0
-    const clientes = salesToday?.length || 0
+    const { data: salesToday } = await supabase.from('sales').select('total,id').eq('sale_date', today).eq('is_historical', false)
+    const ventasHoy = salesToday?.reduce((s,x) => s+x.total, 0) || 0
+    const clientes  = salesToday?.length || 0
 
-    // Gastos del mes
-    const { data: exps } = await supabase
-      .from('expenses').select('amount, has_iva, document_type').gte('expense_date', monthStart).lte('expense_date', monthEnd)
+    const { data: exps } = await supabase.from('expenses').select('amount,has_iva,document_type').gte('expense_date', monthStart).lte('expense_date', monthEnd)
     let gastosMes = 0
-    exps?.forEach(e => {
-      const iva = e.has_iva ? e.amount / 1.19 * 0.19 : 0
-      gastosMes += e.document_type === 'Factura' ? e.amount - iva : e.amount
-    })
+    exps?.forEach(e => { const iva = e.has_iva ? e.amount/1.19*0.19 : 0; gastosMes += e.document_type==='Factura' ? e.amount-iva : e.amount })
 
-    // Compras del mes (non-historical) – para costo real
-    const { data: purchases } = await supabase
-      .from('purchases').select('total, has_iva, document_type').gte('purchase_date', monthStart).lte('purchase_date', monthEnd).eq('is_historical', false)
+    const { data: purchases } = await supabase.from('purchases').select('total,has_iva,document_type').gte('purchase_date', monthStart).lte('purchase_date', monthEnd).eq('is_historical', false)
     let costoPurchases = 0
-    purchases?.forEach(p => {
-      const iva = p.has_iva ? p.total / 1.19 * 0.19 : 0
-      costoPurchases += p.document_type === 'Factura' ? p.total - iva : p.total
-    })
+    purchases?.forEach(p => { const iva = p.has_iva ? p.total/1.19*0.19 : 0; costoPurchases += p.document_type==='Factura' ? p.total-iva : p.total })
 
-    // Ventas del mes (non-historical) – neto sin IVA
-    const { data: salesMonth } = await supabase
-      .from('sales').select('total').gte('sale_date', monthStart).lte('sale_date', monthEnd).eq('is_historical', false)
-    const ventasMesNeto = (salesMonth?.reduce((s, x) => s + x.total, 0) || 0) / 1.19
-
+    const { data: salesMonth } = await supabase.from('sales').select('total').gte('sale_date', monthStart).lte('sale_date', monthEnd).eq('is_historical', false)
+    const ventasMesNeto = (salesMonth?.reduce((s,x) => s+x.total, 0) || 0) / 1.19
     const gananciaNeta = ventasMesNeto - gastosMes - costoPurchases
 
-    // Ganancia por peso invertido (solo ventas/compras no históricas con items)
-    const { data: saleItems } = await supabase
-      .from('sale_items').select('product_id, quantity, subtotal, product_name')
-    const { data: allProducts } = await supabase.from('products').select('id, cost_price, cost_has_iva, sale_price')
+    const { data: saleItems } = await supabase.from('sale_items').select('product_id,quantity,subtotal,product_name')
+    const { data: allProducts } = await supabase.from('products').select('id,cost_price,cost_has_iva,sale_price')
 
-    let totalRevenue = 0, totalCost = 0
+    let totalRevenue=0, totalCost=0
     saleItems?.forEach(si => {
-      const prod = allProducts?.find(p => p.id === si.product_id)
+      const prod = allProducts?.find(p => p.id===si.product_id)
       if (prod?.cost_price) {
-        const costNeto = prod.cost_has_iva ? prod.cost_price / 1.19 : prod.cost_price
+        const costNeto = prod.cost_has_iva ? prod.cost_price/1.19 : prod.cost_price
         totalCost += costNeto * si.quantity
-        totalRevenue += (si.subtotal / 1.19)
+        totalRevenue += si.subtotal/1.19
       }
     })
-    const gainPerPeso = totalCost > 0 ? (totalRevenue - totalCost) / totalCost : null
+    const gainPerPeso = totalCost > 0 ? (totalRevenue-totalCost)/totalCost : null
 
-    // Top productos por ventas (quantity)
     const productSales = {}
-    saleItems?.forEach(si => {
-      const key = si.product_name
-      productSales[key] = (productSales[key] || 0) + si.quantity
-    })
-    const topSalesList = Object.entries(productSales).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, qty]) => ({ name, qty }))
+    saleItems?.forEach(si => { productSales[si.product_name] = (productSales[si.product_name]||0)+si.quantity })
+    const topSalesList = Object.entries(productSales).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([name,qty])=>({name,qty}))
 
-    // Top productos por margen (solo los que tienen costo)
-    const marginMap = {}
-    allProducts?.filter(p => p.cost_price).forEach(p => {
-      const costNeto = p.cost_has_iva ? p.cost_price / 1.19 : p.cost_price
-      const saleNeto = p.sale_price / 1.19
-      const margin = costNeto > 0 ? ((saleNeto - costNeto) / costNeto) * 100 : 0
-      marginMap[p.id] = { margin: Math.round(margin), name: null }
-    })
-    const { data: allProds2 } = await supabase.from('products').select('id, name, cost_price, cost_has_iva, sale_price').not('cost_price', 'is', null)
-    const marginList = (allProds2 || []).map(p => {
-      const costNeto = p.cost_has_iva ? p.cost_price / 1.19 : p.cost_price
-      const saleNeto = p.sale_price / 1.19
-      const margin = costNeto > 0 ? ((saleNeto - costNeto) / costNeto) * 100 : 0
-      return { name: p.name, margin: Math.round(margin) }
-    }).sort((a, b) => b.margin - a.margin).slice(0, 5)
+    const { data: allProds2 } = await supabase.from('products').select('id,name,cost_price,cost_has_iva,sale_price').not('cost_price','is',null)
+    const marginList = (allProds2||[]).map(p => {
+      const costNeto = p.cost_has_iva ? p.cost_price/1.19 : p.cost_price
+      const saleNeto = p.sale_price/1.19
+      const margin = costNeto>0 ? ((saleNeto-costNeto)/costNeto)*100 : 0
+      return { name:p.name, margin:Math.round(margin) }
+    }).sort((a,b)=>b.margin-a.margin).slice(0,5)
 
     setStats({ ventasHoy, clientes, gastosMes, gananciaNeta, gainPerPeso })
     setTopSales(topSalesList)
@@ -96,105 +67,87 @@ export default function Inicio({ onNavigate }) {
   }
 
   const ACTIONS = [
-    { label: 'Registrar una venta', icon: '🧾', cls: 'green', page: 'caja' },
-    { label: 'Cambiar precios de productos', icon: '🏷️', cls: 'purple', page: 'precios' },
-    { label: 'Anotar compra y reponer stock', icon: '🛍️', cls: 'yellow', page: 'compras' },
-    { label: 'Anotar un gasto', icon: '💡', cls: 'red', page: 'gastos' },
-    { label: 'Ver ganancias', icon: '📊', cls: 'blue', page: 'registro' },
-    { label: 'Cargar datos históricos', icon: '📥', cls: 'teal', page: 'cargar' },
+    { label:'Registrar una venta',            icon:'🧾', cls:'green',  page:'caja' },
+    { label:'Cambiar precios de productos',    icon:'🏷️', cls:'purple', page:'precios' },
+    { label:'Anotar compra y reponer stock',   icon:'🛍️', cls:'yellow', page:'compras' },
+    { label:'Anotar un gasto',                 icon:'💡', cls:'red',    page:'gastos' },
+    { label:'Ver ganancias',                   icon:'📊', cls:'blue',   page:'registro' },
+    { label:'Cargar datos históricos',         icon:'📥', cls:'teal',   page:'cargar' },
   ]
 
-  const rankColors = ['gold', 'silver', 'bronze', '', '']
+  const rankColors = ['gold','silver','bronze','','']
 
   return (
     <div className="page">
       {/* Stats */}
       <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-label">Ventas del día</div>
-          <div className="stat-value text-green">{fmt(stats.ventasHoy)}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Clientes</div>
-          <div className="stat-value">{stats.clientes}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Gastos del mes</div>
-          <div className="stat-value text-red">{fmt(stats.gastosMes)}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Ganancia neta</div>
-          <div className="stat-value text-green">{fmt(stats.gananciaNeta)}</div>
-        </div>
+        <div className="stat-card"><div className="stat-label">Ventas del día</div><div className="stat-value text-green">{fmt(stats.ventasHoy)}</div></div>
+        <div className="stat-card"><div className="stat-label">Clientes hoy</div><div className="stat-value">{stats.clientes}</div></div>
+        <div className="stat-card"><div className="stat-label">Gastos del mes</div><div className="stat-value" style={{color:'var(--red)'}}>{fmt(stats.gastosMes)}</div></div>
+        <div className="stat-card"><div className="stat-label">Ganancia neta</div><div className="stat-value text-green">{fmt(stats.gananciaNeta)}</div></div>
       </div>
 
-      {/* Ganancia por peso invertido */}
+      {/* Ganancia por peso */}
       {stats.gainPerPeso !== null && (
         <div className="gain-card">
-          <div className="gain-label">💰 Ganancia por peso invertido</div>
-          <div className="gain-value">{stats.gainPerPeso >= 0 ? '+' : ''}{(stats.gainPerPeso * 100).toFixed(1)}%</div>
-          <div className="gain-sub">Por cada $1 invertido en productos vendidos, ganas ${(stats.gainPerPeso).toFixed(2)} neto</div>
+          <div>
+            <div className="gain-label">💰 Ganancia por peso invertido</div>
+            <div className="gain-sub" style={{marginTop:4}}>Por cada $1 invertido en productos vendidos, ganas ${stats.gainPerPeso.toFixed(2)} neto</div>
+          </div>
+          <div className="gain-value">{stats.gainPerPeso>=0?'+':''}{(stats.gainPerPeso*100).toFixed(1)}%</div>
         </div>
       )}
 
-      {/* Desktop: acciones + rankings en dos columnas */}
+      {/* Main grid */}
       <div className="inicio-grid">
         {/* Acciones */}
         <div className="section">
-          <div className="section-title">Acciones</div>
-          {ACTIONS.map(a => (
-            <button key={a.page} className={`action-btn ${a.cls}`} onClick={() => onNavigate(a.page)}>
-              <span style={{ fontSize: '1.3rem' }}>{a.icon}</span>
-              {a.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Rankings col */}
-        <div className="inicio-rankings">
-          {/* Top ventas */}
-          {topSales.length > 0 && (
-            <div className="section">
-              <div className="section-title">🏆 Productos más vendidos</div>
-              {topSales.map((p, i) => (
-                <div key={p.name} className="rank-item">
-                  <div className={`rank-num ${rankColors[i] || ''}`}>{i + 1}</div>
-                  <div className="rank-info">
-                    <div className="rank-name">{p.name}</div>
-                    <div className="rank-sub">{p.qty} unidades vendidas</div>
-                  </div>
-                  <div className="rank-val">{p.qty} ud.</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Top margen */}
-          {topMargin.length > 0 && (
-            <div className="section">
-              <div className="section-title">📈 Mejor margen de ganancia</div>
-              <div style={{ fontSize: '.78rem', color: 'var(--gray-400)', marginBottom: 10 }}>Solo productos con costo registrado</div>
-              {topMargin.map((p, i) => (
-                <div key={p.name} className="rank-item">
-                  <div className={`rank-num ${rankColors[i] || ''}`}>{i + 1}</div>
-                  <div className="rank-info">
-                    <div className="rank-name">{p.name}</div>
-                    <div className="rank-sub">Margen sobre costo</div>
-                  </div>
-                  <div className="rank-val" style={{ color: p.margin >= 0 ? 'var(--green-dark)' : 'var(--red)' }}>
-                    {p.margin >= 0 ? '+' : ''}{p.margin}%
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Avisos */}
-          <div className="section">
-            <div className="section-title">Avisos</div>
-            <div className="notice green">✅ Todo en orden. ¡Buen día de trabajo!</div>
+          <div className="section-title">⚡ Acciones rápidas</div>
+          <div className="actions-grid">
+            {ACTIONS.map(a => (
+              <button key={a.page} className={`action-btn ${a.cls}`} onClick={() => onNavigate(a.page)}>
+                <span style={{fontSize:'1.3rem'}}>{a.icon}</span>{a.label}
+              </button>
+            ))}
           </div>
         </div>
+
+        {/* Top ventas */}
+        <div className="section">
+          <div className="section-title">🏆 Productos más vendidos</div>
+          {topSales.length === 0
+            ? <div className="empty">Sin ventas registradas aún.</div>
+            : topSales.map((p,i) => (
+              <div key={p.name} className="rank-item">
+                <div className={`rank-num ${rankColors[i]||''}`}>{i+1}</div>
+                <div className="rank-info"><div className="rank-name">{p.name}</div><div className="rank-sub">{p.qty} unidades</div></div>
+                <div className="rank-val">{p.qty} ud.</div>
+              </div>
+            ))
+          }
+        </div>
+
+        {/* Top margen */}
+        <div className="section">
+          <div className="section-title">📈 Mejor margen de ganancia</div>
+          <div style={{fontSize:'.78rem',color:'var(--gray-400)',marginBottom:10}}>Solo productos con costo registrado</div>
+          {topMargin.length === 0
+            ? <div className="empty">Agrega costos en Inventario para ver márgenes.</div>
+            : topMargin.map((p,i) => (
+              <div key={p.name} className="rank-item">
+                <div className={`rank-num ${rankColors[i]||''}`}>{i+1}</div>
+                <div className="rank-info"><div className="rank-name">{p.name}</div><div className="rank-sub">Margen sobre costo</div></div>
+                <div className="rank-val" style={{color:p.margin>=0?'var(--green-dark)':'var(--red)'}}>{p.margin>=0?'+':''}{p.margin}%</div>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+
+      {/* Avisos */}
+      <div className="section" style={{marginTop:12}}>
+        <div className="section-title">Avisos</div>
+        <div className="notice green">✅ Todo en orden. ¡Buen día de trabajo!</div>
       </div>
     </div>
   )
