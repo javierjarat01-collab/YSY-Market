@@ -138,6 +138,7 @@ export default function Caja({ addToast }) {
   ]
 
   return (
+    <>
     <div className="page">
       <div className="section">
         <div className="section-title">🧾 Nueva venta</div>
@@ -362,5 +363,6 @@ export default function Caja({ addToast }) {
         </div>
       </div>
     )}
+    </>
   )
 }

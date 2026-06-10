@@ -84,6 +84,7 @@ export default function Inventario({ addToast }) {
   }
 
   return (
+    <>
     <div className="page">
       <div className="section">
         <div className="section-title">📦 {editProd ? 'Editar producto' : 'Agregar producto'}</div>
@@ -218,5 +219,6 @@ export default function Inventario({ addToast }) {
         </div>
       </div>
     )}
+    </>
   )
 }

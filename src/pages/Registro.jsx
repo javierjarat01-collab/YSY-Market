@@ -42,6 +42,7 @@ export default function Registro() {
   }
 
   return (
+    <>
     <div className="page">
       {/* Summary */}
       <div className="stats-grid">
@@ -109,5 +110,6 @@ export default function Registro() {
         </div>
       </div>
     )}
+    </>
   )
 }
