@@ -17,9 +17,10 @@ const fmt = n => '$' + Math.round(n).toLocaleString('es-CL')
 
 export default function Inventario({ addToast }) {
   const [products, setProducts] = useState([])
+  const [search, setSearch] = useState('')
   const [form, setForm] = useState({
     name: '', category: 'Otro', sale_price: '', cost_price: '', cost_has_iva: true,
-    stock_current: '', stock_min: '5', expiry_date: ''
+    stock_current: '', stock_min: '5', expiry_date: '', sold_by_weight: false
   })
   const [saving, setSaving] = useState(false)
   const [editProd, setEditProd] = useState(null)
@@ -45,6 +46,7 @@ export default function Inventario({ addToast }) {
       stock_current: parseInt(form.stock_current) || 0,
       stock_min: parseInt(form.stock_min) || 5,
       expiry_date: form.expiry_date || null,
+      sold_by_weight: form.sold_by_weight,
     }
     if (editProd) {
       await supabase.from('products').update(payload).eq('id', editProd.id)
@@ -54,7 +56,7 @@ export default function Inventario({ addToast }) {
       await supabase.from('products').insert(payload)
       addToast('✅ Producto guardado')
     }
-    setForm({ name: '', category: 'Otro', sale_price: '', cost_price: '', cost_has_iva: true, stock_current: '', stock_min: '5', expiry_date: '' })
+    setForm({ name: '', category: 'Otro', sale_price: '', cost_price: '', cost_has_iva: true, stock_current: '', stock_min: '5', expiry_date: '', sold_by_weight: false })
     setSaving(false)
     load()
   }
@@ -72,7 +74,8 @@ export default function Inventario({ addToast }) {
       name: p.name, category: p.category, sale_price: String(p.sale_price),
       cost_price: p.cost_price ? String(p.cost_price) : '',
       cost_has_iva: p.cost_has_iva, stock_current: String(p.stock_current),
-      stock_min: String(p.stock_min), expiry_date: p.expiry_date || ''
+      stock_min: String(p.stock_min), expiry_date: p.expiry_date || '',
+      sold_by_weight: p.sold_by_weight || false
     })
     window.scrollTo(0, 0)
   }
@@ -95,11 +98,33 @@ export default function Inventario({ addToast }) {
           ))}
         </div>
 
+        <button
+          onClick={() => set('sold_by_weight', !form.sold_by_weight)}
+          style={{
+            width: '100%', marginBottom: 10, padding: '14px 16px',
+            borderRadius: 12, border: `2px solid ${form.sold_by_weight ? '#7c3aed' : 'var(--gray-200)'}`,
+            background: form.sold_by_weight ? '#ede9fe' : 'white',
+            display: 'flex', alignItems: 'center', gap: 12,
+            cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)'
+          }}>
+          <span style={{ fontSize: '1.4rem' }}>{form.sold_by_weight ? '✅' : '⬜'}</span>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '.9rem', color: form.sold_by_weight ? '#7c3aed' : 'var(--gray-700)' }}>
+              ⚖️ Se vende por peso (fiambre, queso, etc.)
+            </div>
+            <div style={{ fontSize: '.75rem', color: 'var(--gray-400)', marginTop: 2 }}>
+              {form.sold_by_weight ? 'Activo — el precio es por kilo' : 'Toca para activar'}
+            </div>
+          </div>
+        </button>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
             <div className="field-label">Precio de venta</div>
-            <div style={{ fontSize: '.74rem', color: 'var(--gray-400)', marginBottom: 4 }}>Con IVA incluido</div>
-            <input className="field-input" type="number" placeholder="1200" value={form.sale_price} onChange={e => set('sale_price', e.target.value)} />
+            <div style={{ fontSize: '.74rem', color: 'var(--gray-400)', marginBottom: 4 }}>
+              {form.sold_by_weight ? 'Precio por kilo (con IVA)' : 'Con IVA incluido'}
+            </div>
+            <input className="field-input" type="number" placeholder={form.sold_by_weight ? '8000' : '1200'} value={form.sale_price} onChange={e => set('sale_price', e.target.value)} />
           </div>
           <div>
             <div className="field-label">Costo de compra</div>
@@ -134,7 +159,7 @@ export default function Inventario({ addToast }) {
           💾 {saving ? 'Guardando...' : editProd ? 'Actualizar producto' : 'Guardar producto'}
         </button>
         {editProd && (
-          <button onClick={() => { setEditProd(null); setForm({ name: '', category: 'Otro', sale_price: '', cost_price: '', cost_has_iva: true, stock_current: '', stock_min: '5', expiry_date: '' }) }}
+          <button onClick={() => { setEditProd(null); setForm({ name: '', category: 'Otro', sale_price: '', cost_price: '', cost_has_iva: true, stock_current: '', stock_min: '5', expiry_date: '', sold_by_weight: false }) }}
             style={{ width: '100%', marginTop: 8, padding: '12px', borderRadius: 12, border: '1.5px solid var(--gray-200)', background: 'white', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' }}>
             Cancelar edición
           </button>
@@ -143,19 +168,23 @@ export default function Inventario({ addToast }) {
 
       <div className="section">
         <div className="section-title">Mis productos <span style={{ fontSize: '.8rem', fontWeight: 400, color: 'var(--gray-400)' }}>({products.length})</span></div>
+        <div className="search-bar">
+          <span>🔍</span>
+          <input placeholder="Buscar producto..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
         {products.length === 0 ? (
           <div className="empty">Aun no hay productos.</div>
-        ) : products.map(p => (
+        ) : products.filter(p => p.name.toLowerCase().includes(search.toLowerCase())).map(p => (
           <div key={p.id} className="product-item" style={{ cursor: 'default' }}>
             <div onClick={() => startEdit(p)} style={{ flex: 1, cursor: 'pointer' }}>
-              <div className="pi-name">{p.name}</div>
+              <div className="pi-name">{p.name} {p.sold_by_weight && <span style={{ fontSize: '.7rem', background: 'var(--purple-light, #ede9fe)', color: '#7c3aed', borderRadius: 6, padding: '1px 6px', fontWeight: 700 }}>⚖️ kg</span>}</div>
               <div className="pi-cat">{p.category} · Stock: {p.stock_current}</div>
               {p.stock_current <= p.stock_min && (
                 <div style={{ fontSize: '.72rem', color: 'var(--orange)', fontWeight: 700 }}>⚠️ Stock bajo</div>
               )}
             </div>
             <div style={{ textAlign: 'right', marginLeft: 8 }}>
-              <div className="pi-price">${p.sale_price.toLocaleString('es-CL')}</div>
+              <div className="pi-price">${p.sale_price.toLocaleString('es-CL')}{p.sold_by_weight && <span style={{ fontSize: '.7rem', fontWeight: 400 }}>/kg</span>}</div>
               {p.cost_price && <div style={{ fontSize: '.7rem', color: 'var(--gray-400)' }}>C: ${p.cost_price.toLocaleString('es-CL')}</div>}
               <button onClick={() => deleteProduct(p.id)} style={{ fontSize: '.7rem', color: 'var(--red)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>🗑 Eliminar</button>
             </div>
