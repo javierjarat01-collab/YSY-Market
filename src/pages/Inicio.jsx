@@ -5,7 +5,7 @@ import { format, startOfMonth, endOfMonth } from 'date-fns'
 const fmt = n => '$' + Math.round(n).toLocaleString('es-CL')
 
 export default function Inicio({ onNavigate }) {
-  const [stats, setStats] = useState({ ventasHoy:0, clientes:0, gastosMes:0, gananciaNeta:0, gainPerPeso:null })
+  const [stats, setStats] = useState({ ventasHoy:0, clientes:0, gastosMes:0, gananciaNeta:0, gainPerPeso:null, sinCosto:0 })
   const [topSales, setTopSales] = useState([])
   const [topMargin, setTopMargin] = useState([])
   const [loading, setLoading] = useState(true)
@@ -18,7 +18,7 @@ export default function Inicio({ onNavigate }) {
     const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd')
     const monthEnd   = format(endOfMonth(new Date()),   'yyyy-MM-dd')
 
-    const { data: salesToday } = await supabase.from('sales').select('total,id').eq('sale_date', today).eq('is_historical', false)
+    const { data: salesToday } = await supabase.from('sales').select('total,id').eq('sale_date', today)
     const ventasHoy = salesToday?.reduce((s,x) => s+x.total, 0) || 0
     const clientes  = salesToday?.length || 0
 
@@ -30,22 +30,26 @@ export default function Inicio({ onNavigate }) {
     let costoPurchases = 0
     purchases?.forEach(p => { const iva = p.has_iva ? p.total/1.19*0.19 : 0; costoPurchases += p.document_type==='Factura' ? p.total-iva : p.total })
 
-    const { data: salesMonth } = await supabase.from('sales').select('total').gte('sale_date', monthStart).lte('sale_date', monthEnd).eq('is_historical', false)
+    const { data: salesMonth } = await supabase.from('sales').select('total').gte('sale_date', monthStart).lte('sale_date', monthEnd)
     const ventasMesNeto = (salesMonth?.reduce((s,x) => s+x.total, 0) || 0) / 1.19
     const gananciaNeta = ventasMesNeto - gastosMes - costoPurchases
 
     const { data: saleItems } = await supabase.from('sale_items').select('product_id,quantity,subtotal,product_name')
     const { data: allProducts } = await supabase.from('products').select('id,cost_price,cost_has_iva,sale_price')
 
-    let totalRevenue=0, totalCost=0
+    let totalRevenue=0, totalCost=0, sinCosto=0
+    const sinCostoNombres = new Set()
     saleItems?.forEach(si => {
       const prod = allProducts?.find(p => p.id===si.product_id)
       if (prod?.cost_price) {
         const costNeto = prod.cost_has_iva ? prod.cost_price/1.19 : prod.cost_price
         totalCost += costNeto * si.quantity
         totalRevenue += si.subtotal/1.19
+      } else {
+        sinCostoNombres.add(si.product_name)
       }
     })
+    sinCosto = sinCostoNombres.size
     const gainPerPeso = totalCost > 0 ? (totalRevenue-totalCost)/totalCost : null
 
     const productSales = {}
@@ -60,7 +64,7 @@ export default function Inicio({ onNavigate }) {
       return { name:p.name, margin:Math.round(margin) }
     }).sort((a,b)=>b.margin-a.margin).slice(0,5)
 
-    setStats({ ventasHoy, clientes, gastosMes, gananciaNeta, gainPerPeso })
+    setStats({ ventasHoy, clientes, gastosMes, gananciaNeta, gainPerPeso, sinCosto })
     setTopSales(topSalesList)
     setTopMargin(marginList)
     setLoading(false)
@@ -90,11 +94,24 @@ export default function Inicio({ onNavigate }) {
       {/* Ganancia por peso */}
       {stats.gainPerPeso !== null && (
         <div className="gain-card">
-          <div>
+          <div style={{flex:1}}>
             <div className="gain-label">💰 Ganancia por peso invertido</div>
-            <div className="gain-sub" style={{marginTop:4}}>Por cada $1 invertido en productos vendidos, ganas ${stats.gainPerPeso.toFixed(2)} neto</div>
+            <div className="gain-sub" style={{marginTop:4}}>Por cada $1 invertido en productos con costo registrado, ganas ${stats.gainPerPeso.toFixed(2)} neto</div>
+            {stats.sinCosto > 0 && (
+              <div style={{marginTop:8, background:'rgba(255,255,255,.2)', borderRadius:8, padding:'6px 10px', fontSize:'.78rem', fontWeight:700}}>
+                ⚠️ {stats.sinCosto} producto{stats.sinCosto>1?'s':''} vendido{stats.sinCosto>1?'s':''} sin costo registrado — el margen real puede ser menor
+              </div>
+            )}
           </div>
           <div className="gain-value">{stats.gainPerPeso>=0?'+':''}{(stats.gainPerPeso*100).toFixed(1)}%</div>
+        </div>
+      )}
+      {stats.gainPerPeso === null && stats.sinCosto > 0 && (
+        <div style={{margin:'0 12px 12px', background:'#fff7ed', borderRadius:12, padding:'14px 16px', border:'1.5px solid #fde68a'}}>
+          <div style={{fontWeight:700, color:'#92400e', fontSize:'.9rem'}}>⚠️ No se puede calcular el margen</div>
+          <div style={{fontSize:'.82rem', color:'#b45309', marginTop:4}}>
+            {stats.sinCosto} producto{stats.sinCosto>1?'s':''} vendido{stats.sinCosto>1?'s':''} no tienen costo registrado. Agrégalos en Inventario para ver la ganancia real.
+          </div>
         </div>
       )}
 

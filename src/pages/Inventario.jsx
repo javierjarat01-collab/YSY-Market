@@ -24,6 +24,7 @@ export default function Inventario({ addToast }) {
   })
   const [saving, setSaving] = useState(false)
   const [editProd, setEditProd] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -49,11 +50,13 @@ export default function Inventario({ addToast }) {
       sold_by_weight: form.sold_by_weight,
     }
     if (editProd) {
-      await supabase.from('products').update(payload).eq('id', editProd.id)
+      const { error } = await supabase.from('products').update(payload).eq('id', editProd.id)
+      if (error) { addToast('Error: ' + error.message, 'error'); setSaving(false); return }
       addToast('✅ Producto actualizado')
       setEditProd(null)
     } else {
-      await supabase.from('products').insert(payload)
+      const { error } = await supabase.from('products').insert(payload)
+      if (error) { addToast('Error: ' + error.message, 'error'); setSaving(false); return }
       addToast('✅ Producto guardado')
     }
     setForm({ name: '', category: 'Otro', sale_price: '', cost_price: '', cost_has_iva: true, stock_current: '', stock_min: '5', expiry_date: '', sold_by_weight: false })
@@ -62,9 +65,9 @@ export default function Inventario({ addToast }) {
   }
 
   async function deleteProduct(id) {
-    if (!confirm('¿Eliminar este producto?')) return
     await supabase.from('products').delete().eq('id', id)
     addToast('Producto eliminado')
+    setConfirmDelete(null)
     load()
   }
 
@@ -186,11 +189,34 @@ export default function Inventario({ addToast }) {
             <div style={{ textAlign: 'right', marginLeft: 8 }}>
               <div className="pi-price">${p.sale_price.toLocaleString('es-CL')}{p.sold_by_weight && <span style={{ fontSize: '.7rem', fontWeight: 400 }}>/kg</span>}</div>
               {p.cost_price && <div style={{ fontSize: '.7rem', color: 'var(--gray-400)' }}>C: ${p.cost_price.toLocaleString('es-CL')}</div>}
-              <button onClick={() => deleteProduct(p.id)} style={{ fontSize: '.7rem', color: 'var(--red)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>🗑 Eliminar</button>
+              <button onClick={() => setConfirmDelete(p)} style={{ fontSize: '.8rem', color: 'var(--red)', background: 'var(--red-light)', border: 'none', cursor: 'pointer', fontWeight: 700, padding: '6px 10px', borderRadius: 8 }}>🗑 Eliminar</button>
             </div>
           </div>
         ))}
       </div>
     </div>
+
+    {/* Modal confirmación eliminar */}
+    {confirmDelete && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        <div style={{ background: 'white', borderRadius: '20px 20px 0 0', padding: '28px 20px 36px', width: '100%', maxWidth: 400, textAlign: 'center' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🗑️</div>
+          <div style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: 8 }}>¿Eliminar producto?</div>
+          <div style={{ color: 'var(--gray-500)', fontSize: '.95rem', marginBottom: 24 }}>
+            Se eliminará <strong>{confirmDelete.name}</strong> del inventario. Esto no se puede deshacer.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <button onClick={() => setConfirmDelete(null)}
+              style={{ padding: '16px', borderRadius: 12, border: '2px solid var(--gray-200)', background: 'white', fontWeight: 700, fontSize: '1rem', cursor: 'pointer' }}>
+              Cancelar
+            </button>
+            <button onClick={() => deleteProduct(confirmDelete.id)}
+              style={{ padding: '16px', borderRadius: 12, border: 'none', background: 'var(--red)', color: 'white', fontWeight: 800, fontSize: '1rem', cursor: 'pointer' }}>
+              Sí, eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   )
 }

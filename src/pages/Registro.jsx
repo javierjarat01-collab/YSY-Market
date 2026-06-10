@@ -9,6 +9,7 @@ export default function Registro() {
   const [sales, setSales] = useState([])
   const [filter, setFilter] = useState('Todo')
   const [loading, setLoading] = useState(true)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -35,8 +36,8 @@ export default function Registro() {
   const PAY_ICONS = { Efectivo: '💵', Debito: '💳', 'Transfer.': '📱' }
 
   async function deleteSale(id) {
-    if (!confirm('¿Eliminar esta venta?')) return
     await supabase.from('sales').delete().eq('id', id)
+    setConfirmDelete(null)
     load()
   }
 
@@ -79,12 +80,34 @@ export default function Registro() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div className="hi-amount">{fmt(s.total)}</div>
-                  <button onClick={() => deleteSale(s.id)} style={{ fontSize: '.7rem', color: 'var(--gray-300)', background: 'none', border: 'none', cursor: 'pointer' }}>🗑</button>
+                  <button onClick={() => setConfirmDelete(s)} style={{ fontSize: '.85rem', color: 'var(--red)', background: 'var(--red-light)', border: 'none', cursor: 'pointer', fontWeight: 700, padding: '6px 10px', borderRadius: 8 }}>🗑</button>
                 </div>
               </div>
             ))
         }
       </div>
     </div>
+
+    {confirmDelete && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        <div style={{ background: 'white', borderRadius: '20px 20px 0 0', padding: '28px 20px 36px', width: '100%', maxWidth: 400, textAlign: 'center' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🗑️</div>
+          <div style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: 8 }}>¿Eliminar esta venta?</div>
+          <div style={{ color: 'var(--gray-500)', fontSize: '.95rem', marginBottom: 24 }}>
+            Venta de <strong>{fmt(confirmDelete.total)}</strong> del {confirmDelete.sale_date}. Esto no se puede deshacer.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <button onClick={() => setConfirmDelete(null)}
+              style={{ padding: '16px', borderRadius: 12, border: '2px solid var(--gray-200)', background: 'white', fontWeight: 700, fontSize: '1rem', cursor: 'pointer' }}>
+              Cancelar
+            </button>
+            <button onClick={() => deleteSale(confirmDelete.id)}
+              style={{ padding: '16px', borderRadius: 12, border: 'none', background: 'var(--red)', color: 'white', fontWeight: 800, fontSize: '1rem', cursor: 'pointer' }}>
+              Sí, eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   )
 }
