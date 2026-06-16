@@ -14,7 +14,7 @@ export default function Caja({ addToast }) {
   const [weightModal, setWeightModal] = useState(null)
   const [gramsInput, setGramsInput] = useState('')
   const [newProdModal, setNewProdModal] = useState(false)
-  const [newProd, setNewProd] = useState({ name: '', sale_price: '' })
+  const [newProd, setNewProd] = useState({ name: '', sale_price: '', cost_price: '', stock_current: '' })
 
   useEffect(() => { loadProducts(); loadTop() }, [])
 
@@ -72,7 +72,9 @@ export default function Caja({ addToast }) {
       name: newProd.name.trim(),
       category: 'Otro',
       sale_price: parseFloat(newProd.sale_price),
-      stock_current: 0,
+      cost_price: newProd.cost_price ? parseFloat(newProd.cost_price) : null,
+      cost_has_iva: true,
+      stock_current: newProd.stock_current ? parseInt(newProd.stock_current) : 0,
       stock_min: 5,
       sold_by_weight: false,
     }
@@ -80,7 +82,7 @@ export default function Caja({ addToast }) {
     if (error) { addToast('Error al guardar producto', 'error'); return }
     await loadProducts()
     addToCart(saved)
-    setNewProd({ name: '', sale_price: '' })
+    setNewProd({ name: '', sale_price: '', cost_price: '', stock_current: '' })
     setNewProdModal(false)
     addToast('✅ Producto guardado y agregado')
   }
@@ -328,11 +330,11 @@ export default function Caja({ addToast }) {
     {/* Modal nuevo producto */}
     {newProdModal && (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-        <div style={{ background: 'white', borderRadius: '20px 20px 0 0', padding: '24px 20px 36px', width: '100%', maxWidth: 400 }}>
+        <div style={{ background: 'white', borderRadius: '20px 20px 0 0', padding: '24px 20px 36px', width: '100%', maxWidth: 400, maxHeight: '90vh', overflowY: 'auto' }}>
           <div style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: 4 }}>➕ Producto nuevo</div>
           <div style={{ fontSize: '.85rem', color: 'var(--gray-500)', marginBottom: 16 }}>Se guardará en inventario y se agrega a la venta.</div>
 
-          <div className="field-label">Nombre del producto</div>
+          <div className="field-label">Nombre del producto *</div>
           <input
             className="field-input"
             placeholder="Ej: Coca-Cola 1.5L"
@@ -341,17 +343,43 @@ export default function Caja({ addToast }) {
             autoFocus
           />
 
-          <div className="field-label">Precio de venta</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <div className="field-label">Precio venta *</div>
+              <div style={{ fontSize: '.72rem', color: 'var(--gray-400)', marginBottom: 4 }}>Con IVA incluido</div>
+              <input
+                className="field-input"
+                type="number"
+                placeholder="Ej: 1200"
+                value={newProd.sale_price}
+                onChange={e => setNewProd(p => ({ ...p, sale_price: e.target.value }))}
+              />
+            </div>
+            <div>
+              <div className="field-label">Costo de compra</div>
+              <div style={{ fontSize: '.72rem', color: 'var(--gray-400)', marginBottom: 4 }}>Con IVA incluido</div>
+              <input
+                className="field-input"
+                type="number"
+                placeholder="Ej: 900"
+                value={newProd.cost_price}
+                onChange={e => setNewProd(p => ({ ...p, cost_price: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="field-label">Stock actual</div>
+          <div style={{ fontSize: '.72rem', color: 'var(--gray-400)', marginBottom: 4 }}>¿Cuántas unidades hay ahora?</div>
           <input
             className="field-input"
             type="number"
-            placeholder="Ej: 1200"
-            value={newProd.sale_price}
-            onChange={e => setNewProd(p => ({ ...p, sale_price: e.target.value }))}
+            placeholder="Ej: 12"
+            value={newProd.stock_current}
+            onChange={e => setNewProd(p => ({ ...p, stock_current: e.target.value }))}
           />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10, marginTop: 20 }}>
-            <button onClick={() => { setNewProdModal(false); setNewProd({ name: '', sale_price: '' }) }}
+            <button onClick={() => { setNewProdModal(false); setNewProd({ name: '', sale_price: '', cost_price: '', stock_current: '' }) }}
               style={{ padding: '16px', borderRadius: 12, border: '2px solid var(--gray-200)', background: 'white', fontWeight: 700, fontSize: '1rem', cursor: 'pointer' }}>
               Cancelar
             </button>
